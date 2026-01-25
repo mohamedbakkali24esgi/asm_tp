@@ -1,44 +1,43 @@
+global _start
+
 section .data
-    search      db  0x31, 0x33, 0x33, 0x37, 0x0A
+    search      db "1337"
     search_len  equ $ - search
-    replace     db  0x48, 0x34, 0x43, 0x4B
-    err_msg     db  "Error", 10
+    replace     db "H4CK"
+    err_msg     db "Error", 10
     err_len     equ $ - err_msg
 
 section .bss
-    fd          resq 1
-    fsize       resq 1
-    mapaddr     resq 1
+    fd      resq 1
+    fsize   resq 1
+    mapaddr resq 1
+    off     resq 1
 
 section .text
-global _start
-
 _start:
-    mov rbx, rsp
-    mov rcx, [rbx]
-    cmp rcx, 2
-    jl fail
+    cmp qword [rsp], 2
+    jne fail
 
-    mov rdi, [rbx+16]
+    mov rdi, [rsp+16]
     mov eax, 2
     mov esi, 2
     xor edx, edx
     syscall
     test eax, eax
     js fail
-    mov [fd], eax
+    mov [fd], rax
 
     mov eax, 8
-    mov edi, [fd]
+    mov rdi, [fd]
     xor esi, esi
     mov edx, 2
     syscall
-    test eax, eax
-    js cleanup
-    mov [fsize], eax
+    test rax, rax
+    js cleanup_fail
+    mov [fsize], rax
 
     cmp rax, search_len
-    jl cleanup
+    jb cleanup_fail
 
     mov eax, 9
     xor edi, edi
@@ -48,38 +47,54 @@ _start:
     mov r8, [fd]
     xor r9d, r9d
     syscall
-    cmp eax, -1
-    je cleanup
+    test rax, rax
+    js cleanup_fail
     mov [mapaddr], rax
 
-    mov rdi, rax
+    xor rbx, rbx
     mov rcx, [fsize]
     sub rcx, search_len
-    jl unmap
 
 scan:
-    mov rsi, search
-    mov rdx, search_len
-    push rdi
-    repe cmpsb
-    pop rdi
-    je replace_here
-    inc rdi
-    loop scan
-    jmp unmap
+    cmp rbx, rcx
+    ja  unmap_fail
 
-replace_here:
-    mov rsi, replace
-    mov rcx, 4
-    rep movsb
+    mov rdi, [mapaddr]
+    add rdi, rbx
 
-unmap:
+    mov al, [rdi]
+    cmp al, byte [rel search]
+    jne next
+    mov al, [rdi+1]
+    cmp al, byte [rel search+1]
+    jne next
+    mov al, [rdi+2]
+    cmp al, byte [rel search+2]
+    jne next
+    mov al, [rdi+3]
+    cmp al, byte [rel search+3]
+    jne next
+
+    mov al, byte [rel replace]
+    mov [rdi], al
+    mov al, byte [rel replace+1]
+    mov [rdi+1], al
+    mov al, byte [rel replace+2]
+    mov [rdi+2], al
+    mov al, byte [rel replace+3]
+    mov [rdi+3], al
+    jmp success
+
+next:
+    inc rbx
+    jmp scan
+
+success:
     mov eax, 11
     mov rdi, [mapaddr]
     mov rsi, [fsize]
     syscall
 
-cleanup:
     mov eax, 3
     mov rdi, [fd]
     syscall
@@ -88,13 +103,23 @@ cleanup:
     xor edi, edi
     syscall
 
+unmap_fail:
+    mov eax, 11
+    mov rdi, [mapaddr]
+    mov rsi, [fsize]
+    syscall
+
+cleanup_fail:
+    mov eax, 3
+    mov rdi, [fd]
+    syscall
+
 fail:
     mov eax, 1
     mov edi, 1
     mov rsi, err_msg
     mov edx, err_len
     syscall
-
     mov eax, 60
     mov edi, 1
     syscall
