@@ -51,7 +51,7 @@ _start:
     mov eax, 7
     lea rdi, [rel pollfd]
     mov esi, 1
-    mov edx, 5000
+    mov edx, 2000
     syscall
     test eax, eax
     jle timed_out
@@ -89,7 +89,9 @@ _start:
     mov edx, suffix_len
     syscall
 
-    jmp done
+    mov eax, 60
+    xor edi, edi
+    syscall
 
 timed_out:
     mov eax, 1
@@ -97,10 +99,8 @@ timed_out:
     lea rsi, [rel timeout_msg]
     mov edx, timeout_len
     syscall
-
-done:
     mov eax, 60
-    xor edi, edi
+    mov edi, 1
     syscall
 
 fail:
