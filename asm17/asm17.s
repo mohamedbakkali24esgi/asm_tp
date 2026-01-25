@@ -1,15 +1,20 @@
 global _start
 
+section .bss
+buf resb 4096
+
 section .text
 _start:
-    cmp qword [rsp], 2
+    mov rcx, [rsp]
+    cmp rcx, 2
     jl  exit_ok
 
     mov rdi, [rsp+16]
     call atoi
+
     xor edx, edx
     mov ecx, 26
-    div rcx
+    div ecx
     mov r12d, edx
 
     xor eax, eax
@@ -26,7 +31,7 @@ _start:
 
 scan:
     test rsi, rsi
-    jz  out
+    jz out
 
     mov al, [rdi]
 
@@ -34,12 +39,14 @@ scan:
     jb  upper
     cmp al, 'z'
     ja  upper
-    sub al, 'a'
-    add al, r12b
+
+    movzx eax, al
+    sub eax, 'a'
+    add eax, r12d
     xor edx, edx
-    mov bl, 26
-    div bl
-    mov al, dl
+    mov ecx, 26
+    div ecx
+    mov eax, edx
     add al, 'a'
     mov [rdi], al
     jmp step
@@ -49,12 +56,14 @@ upper:
     jb  step
     cmp al, 'Z'
     ja  step
-    sub al, 'A'
-    add al, r12b
+
+    movzx eax, al
+    sub eax, 'A'
+    add eax, r12d
     xor edx, edx
-    mov bl, 26
-    div bl
-    mov al, dl
+    mov ecx, 26
+    div ecx
+    mov eax, edx
     add al, 'A'
     mov [rdi], al
 
@@ -88,6 +97,3 @@ atoi:
     jmp .next
 .done:
     ret
-
-section .bss
-buf resb 4096
